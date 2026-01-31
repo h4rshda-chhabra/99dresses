@@ -2,7 +2,7 @@
 
 99dresses is a modern web application designed to facilitate a sustainable clothing swap ecosystem. Users can list their items, bid on others' items using a virtual credit system, and communicate with sellers to arrange swaps.
 
-## 🚀 Key Features
+##  Key Features
 
 - **User Authentication**: Secure register and login system.
 - **Item Listing**: Users can upload clothing items with multiple images and descriptions.
@@ -12,7 +12,7 @@
 - **Wallet & Credits**: Manage virtual currency for swapping within the platform.
 - **Seller Profiles**: View seller ratings, reviews, and their listed collection.
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 ### Frontend
 - **Framework**: React 19 (Vite)
@@ -26,7 +26,7 @@
 - **Authentication**: JWT & Bcrypt.js
 - **Database / Storage**: Firebase (Firestore, Storage, Auth)
 
-## 📦 Project Structure
+##  Project Structure
 
 ```text
 ├── backend/            # Express server, routes, and controllers
@@ -85,10 +85,5 @@
    npm run dev
    ```
 
-## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 📄 License
-
-This project is licensed under the ISC License.
