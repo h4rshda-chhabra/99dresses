@@ -1,0 +1,144 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Playfair Display", serif;
+  --font-body: "DM Sans", sans-serif;
+
+  --color-cherry: #750608;
+  --color-cosmos: #74A5BE;
+  --color-hibiscus: var(--color-cosmos);
+
+  /* Adding custom animations to the theme */
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-float-delayed: float 6s ease-in-out infinite 2s;
+  --animate-shimmer: shimmer 2s infinite;
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+  --animate-slide-up: slide-up 0.6s ease-out forwards;
+  --animate-fade-in: fade-in 0.4s ease-out forwards;
+
+  @keyframes float {
+
+    0%,
+    100% {
+      transform: translateY(0px) rotate(0deg);
+    }
+
+    50% {
+      transform: translateY(-20px) rotate(5deg);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  @keyframes pulse-glow {
+
+    0%,
+    100% {
+      box-shadow: 0 0 20px rgba(117, 6, 8, 0.3);
+    }
+
+    50% {
+      box-shadow: 0 0 40px rgba(117, 6, 8, 0.6);
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-white font-body overflow-x-hidden;
+    box-sizing: border-box;
+  }
+}
+
+@utility glass {
+  @apply bg-white/10 backdrop-blur-md border border-white/20;
+}
+
+@utility card-hover {
+  @apply transition-all duration-500 ease-out;
+
+  &:hover {
+    @apply -translate-y-2 scale-[1.02];
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  }
+}
+
+@utility gradient-text {
+  color: var(--color-cherry);
+  -webkit-text-fill-color: initial;
+  background: transparent;
+}
+
+@utility btn-primary {
+  background: var(--color-cherry);
+  @apply transition-all duration-300 active:scale-95 text-white;
+
+  &:hover {
+    @apply scale-105;
+    box-shadow: 0 10px 30px rgba(117, 6, 8, 0.4);
+    background: #8e1a1c;
+  }
+}
+
+@utility input-focus {
+  &:focus {
+    @apply outline-none ring-2 ring-cherry/20;
+    border-color: var(--color-cherry);
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  background-size: 200% 100%;
+}
+
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker {
+  animation: ticker 40s linear infinite;
+  min-width: max-content;
+}
+
+.pause-hover:hover .animate-ticker {
+  animation-play-state: paused;
+}
