@@ -171,11 +171,29 @@ exports.acceptBid = async (req, res) => {
                 createdAt: new Date().toISOString()
             });
 
-            return { itemTitle: itemData.title, amount: bidData.amount };
+            // 5. Create a Swap record for chat purposes
+            const swapRef = db.collection('swapOffers').doc();
+            const swapData = {
+                itemRequestedId: bidData.itemId,
+                itemRequestedTitle: itemData.title,
+                itemOfferedId: 'PURCHASE', // Indicator that this was a bid/purchase
+                itemOfferedTitle: `${bidData.amount} CREDITS`,
+                fromUserId: bidData.bidderId,
+                fromUserName: buyerDoc.data().name,
+                toUserId: itemData.ownerId,
+                toUserName: sellerDoc.data().name,
+                status: 'ACCEPTED',
+                type: 'AUCTION_WIN',
+                createdAt: new Date().toISOString()
+            };
+            transaction.set(swapRef, swapData);
+
+            return { itemTitle: itemData.title, amount: bidData.amount, swapId: swapRef.id };
         });
 
         res.status(200).json({
-            message: `Congratulations! You accepted the bid of ${result.amount} Credits for ${result.itemTitle}.`
+            message: `Congratulations! You accepted the bid of ${result.amount} Credits for ${result.itemTitle}.`,
+            swapId: result.swapId
         });
     } catch (error) {
         console.error("Accept Bid Error:", error.message);

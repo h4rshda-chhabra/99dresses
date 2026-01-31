@@ -29,13 +29,18 @@ exports.createSwapOffer = async (req, res) => {
             const requestedRef = db.collection('items').doc(itemRequestedId);
             const offeredRef = db.collection('items').doc(itemOfferedId);
 
-            const [reqDoc, offDoc] = await Promise.all([
+            const fromUserRef = db.collection('users').doc(fromUserId);
+            const toUserRef = db.collection('users').doc(toUserId);
+
+            const [reqDoc, offDoc, fromUserDoc, toUserDoc] = await Promise.all([
                 transaction.get(requestedRef),
-                transaction.get(offeredRef)
+                transaction.get(offeredRef),
+                transaction.get(fromUserRef),
+                transaction.get(toUserRef)
             ]);
 
-            if (!reqDoc.exists || !offDoc.exists) {
-                throw new Error('One or both items no longer exist');
+            if (!reqDoc.exists || !offDoc.exists || !fromUserDoc.exists || !toUserDoc.exists) {
+                throw new Error('Items or users no longer exist');
             }
 
             if (reqDoc.data().status !== 'ACTIVE' || offDoc.data().status !== 'ACTIVE') {
@@ -48,7 +53,9 @@ exports.createSwapOffer = async (req, res) => {
                 itemOfferedId,
                 itemOfferedTitle: offDoc.data().title,
                 fromUserId,
+                fromUserName: fromUserDoc.data().name,
                 toUserId,
+                toUserName: toUserDoc.data().name,
                 status: 'PENDING',
                 createdAt: new Date().toISOString()
             };
@@ -87,12 +94,21 @@ exports.getIncomingSwapOffers = async (req, res) => {
         const { userId } = req.params;
         const snapshot = await db.collection('swapOffers')
             .where('toUserId', '==', userId)
-            .where('status', '==', 'PENDING')
             .get();
 
-        const offers = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
+        const offers = await Promise.all(snapshot.docs.map(async doc => {
+            const data = doc.data();
+            const msgSnapshot = await db.collection('messages')
+                .where('swapOfferId', '==', doc.id)
+                .orderBy('createdAt', 'desc')
+                .limit(1)
+                .get();
+
+            return {
+                id: doc.id,
+                ...data,
+                lastMessage: msgSnapshot.empty ? null : msgSnapshot.docs[0].data().text
+            };
         }));
 
         res.status(200).json(offers);
@@ -108,9 +124,19 @@ exports.getSentSwapOffers = async (req, res) => {
             .where('fromUserId', '==', userId)
             .get();
 
-        const offers = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
+        const offers = await Promise.all(snapshot.docs.map(async doc => {
+            const data = doc.data();
+            const msgSnapshot = await db.collection('messages')
+                .where('swapOfferId', '==', doc.id)
+                .orderBy('createdAt', 'desc')
+                .limit(1)
+                .get();
+
+            return {
+                id: doc.id,
+                ...data,
+                lastMessage: msgSnapshot.empty ? null : msgSnapshot.docs[0].data().text
+            };
         }));
 
         res.status(200).json(offers);
@@ -207,6 +233,54 @@ exports.respondToSwap = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+exports.createGeneralInquiry = async (req, res) => {
+    try {
+        const { fromUserId, toUserId } = req.body;
+
+        if (fromUserId === toUserId) {
+            return res.status(400).json({ message: 'You cannot message yourself' });
+        }
+
+        // Check if a general inquiry already exists
+        const existingSnapshot = await db.collection('swapOffers')
+            .where('fromUserId', '==', fromUserId)
+            .where('toUserId', '==', toUserId)
+            .where('status', '==', 'GENERAL')
+            .get();
+
+        if (!existingSnapshot.empty) {
+            return res.status(200).json({ id: existingSnapshot.docs[0].id, message: 'Existing conversation found' });
+        }
+
+        const [fromUserDoc, toUserDoc] = await Promise.all([
+            db.collection('users').doc(fromUserId).get(),
+            db.collection('users').doc(toUserId).get()
+        ]);
+
+        if (!fromUserDoc.exists || !toUserDoc.exists) {
+            throw new Error('User not found');
+        }
+
+        const newInquiry = {
+            itemRequestedId: 'GENERAL',
+            itemRequestedTitle: 'General Inquiry',
+            itemOfferedId: 'NONE',
+            itemOfferedTitle: 'Inquiry',
+            fromUserId,
+            fromUserName: fromUserDoc.data().name,
+            toUserId,
+            toUserName: toUserDoc.data().name,
+            status: 'GENERAL',
+            createdAt: new Date().toISOString()
+        };
+
+        const docRef = await db.collection('swapOffers').add(newInquiry);
+        res.status(201).json({ id: docRef.id, message: 'New conversation started' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 exports.deleteSwapOffer = async (req, res) => {
     try {
         const { id } = req.params;
