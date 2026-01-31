@@ -27,7 +27,7 @@ const RegisterPage = () => {
             if (response.ok) {
                 console.log("Registration Success! Data:", data);
                 login(data);
-                navigate('/dashboard');
+                navigate('/');
             } else {
                 setError(data.message || 'Registration failed');
             }

@@ -17,6 +17,8 @@ const ItemDetailPage = () => {
     const [accepting, setAccepting] = useState(false);
     const [ownerData, setOwnerData] = useState(null);
     const [currentImageIndex, setCurrentImageIndex] = useState(0); // For carousel
+    const [showFullImage, setShowFullImage] = useState(false);
+    const [modalZoom, setModalZoom] = useState(1);
 
     const fetchData = async () => {
         setLoading(true);
@@ -270,10 +272,55 @@ const ItemDetailPage = () => {
             )}
 
             {/* Main Item Detail Section */}
-            <div className="max-w-7xl mx-auto px-6 pt-12 pb-24">
-                <div className="flex flex-col lg:flex-row gap-12 items-start">
+            {/* Full Screen Image Modal */}
+            {showFullImage && (
+                <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm">
+                    {/* Controls */}
+                    <div className="absolute top-6 right-6 flex items-center gap-4 z-[210]">
+                        <div className="flex glass border border-white/10 rounded-full overflow-hidden">
+                            <button
+                                onClick={() => setModalZoom(prev => Math.max(0.5, prev - 0.25))}
+                                className="w-10 h-10 flex items-center justify-center hover:bg-white/10 transition-all font-bold text-xl"
+                            >
+                                −
+                            </button>
+                            <div className="w-16 h-10 flex items-center justify-center border-x border-white/10 font-black text-[10px] tracking-widest uppercase bg-white/5">
+                                {Math.round(modalZoom * 100)}%
+                            </div>
+                            <button
+                                onClick={() => setModalZoom(prev => Math.min(3, prev + 0.25))}
+                                className="w-10 h-10 flex items-center justify-center hover:bg-white/10 transition-all font-bold text-xl"
+                            >
+                                +
+                            </button>
+                        </div>
+                        <button
+                            onClick={() => setShowFullImage(false)}
+                            className="w-10 h-10 glass border border-white/10 rounded-full flex items-center justify-center text-2xl hover:bg-white/20 transition-all"
+                        >
+                            &times;
+                        </button>
+                    </div>
+
+                    {/* Image Container */}
+                    <div className="w-full h-full overflow-auto flex items-center justify-center custom-scrollbar">
+                        <img
+                            src={item.images[currentImageIndex]}
+                            alt={item.title}
+                            className="max-w-none transition-transform duration-200 ease-out shadow-2xl"
+                            style={{
+                                transform: `scale(${modalZoom})`,
+                                maxHeight: '90vh'
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
+
+            <div className="max-w-6xl mx-auto px-6 pt-4 pb-4">
+                <div className="flex flex-col lg:flex-row gap-6 items-start">
                     {/* Image Section */}
-                    <div className="lg:w-2/5 w-full space-y-4">
+                    <div className="lg:w-[30%] w-full space-y-2">
                         {/* Main Image Display */}
                         <div className="rounded-[3rem] overflow-hidden glass border-white/10 shadow-2xl relative group card-hover">
                             <div className="aspect-[3/4] relative">
@@ -282,8 +329,12 @@ const ItemDetailPage = () => {
                                         <img
                                             src={item.images[currentImageIndex]}
                                             alt={`${item.title} - Image ${currentImageIndex + 1}`}
-                                            className="w-full h-full object-cover transition-all duration-500"
+                                            className="w-full h-full object-cover transition-all duration-500 cursor-zoom-in"
                                             key={currentImageIndex}
+                                            onClick={() => {
+                                                setModalZoom(1);
+                                                setShowFullImage(true);
+                                            }}
                                         />
 
                                         {/* Navigation Arrows - Only show if multiple images */}
@@ -332,9 +383,9 @@ const ItemDetailPage = () => {
                                     <button
                                         key={index}
                                         onClick={() => setCurrentImageIndex(index)}
-                                        className={`aspect-square rounded-xl overflow-hidden border-2 transition-all ${currentImageIndex === index
-                                                ? 'border-cosmos shadow-lg shadow-cosmos/30'
-                                                : 'border-white/10 hover:border-white/30'
+                                        className={`aspect-square rounded-xl overflow-hidden border transition-all ${currentImageIndex === index
+                                            ? 'border-cosmos shadow-lg shadow-cosmos/30'
+                                            : 'border-white/10 hover:border-white/30'
                                             }`}
                                     >
                                         <img
@@ -349,42 +400,39 @@ const ItemDetailPage = () => {
                     </div>
 
                     {/* Information & Actions */}
-                    <div className="lg:w-3/5 w-full animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                        <div className="sticky top-12">
-                            <span className="text-cosmos font-black uppercase text-[10px] tracking-[0.3em] mb-6 block">Exclusively Handpicked</span>
-                            <h1 className="font-display text-6xl font-black mb-8 leading-tight tracking-tighter uppercase">{item.title}</h1>
+                    <div className="lg:w-[70%] w-full animate-fade-in" style={{ animationDelay: '0.1s' }}>
+                        <div className="sticky top-4">
+                            <span className="text-cosmos font-black uppercase text-[7px] tracking-[0.3em] mb-2 block">Exclusively Handpicked</span>
+                            <h1 className="font-display text-2xl font-black mb-2 leading-tight tracking-tighter uppercase">{item.title}</h1>
 
                             {/* Seller Info */}
                             {ownerData && (
                                 <Link
                                     to={`/profile/${item.ownerId}`}
-                                    className="inline-flex items-center gap-3 glass rounded-2xl px-6 py-4 border-white/10 mb-8 hover:bg-white/10 transition-all group"
+                                    className="inline-flex items-center gap-2 glass rounded-lg px-3 py-1.5 border-white/10 mb-2 hover:bg-white/10 transition-all group"
                                 >
-                                    <div className="w-10 h-10 rounded-full glass border border-white/10 flex items-center justify-center">
-                                        <span className="font-black text-cosmos text-sm">{ownerData.name.charAt(0)}</span>
+                                    <div className="w-6 h-6 rounded-full glass border border-white/10 flex items-center justify-center">
+                                        <span className="font-black text-cosmos text-[10px]">{ownerData.name.charAt(0)}</span>
                                     </div>
                                     <div>
-                                        <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Seller</div>
-                                        <div className="font-black text-white group-hover:text-cosmos transition-colors">{ownerData.name}</div>
-                                        {ownerData.basedIn && (
-                                            <div className="text-xs text-slate-400 font-medium">📍 {ownerData.basedIn}</div>
-                                        )}
+                                        <div className="text-[6px] font-black text-slate-500 uppercase tracking-widest leading-none">Seller</div>
+                                        <div className="font-black text-white text-xs group-hover:text-cosmos transition-colors">{ownerData.name}</div>
                                     </div>
                                 </Link>
                             )}
 
-                            <div className="p-8 glass rounded-[3rem] border-white/10 mb-12 relative overflow-hidden group">
+                            <div className="p-3 glass rounded-2xl border-white/10 mb-2 relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-cosmos/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Valuation / Reserved At</p>
-                                <div className="flex items-baseline gap-4">
-                                    <span className="text-6xl font-black text-white">{item.price || 0}</span>
-                                    <span className="text-xl font-black text-cosmos tracking-tighter italic">CREDITS</span>
+                                <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Valuation / Reserved At</p>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-2xl font-black text-white">{item.price || 0}</span>
+                                    <span className="text-xs font-black text-cosmos tracking-tighter italic">CREDITS</span>
                                 </div>
                             </div>
 
-                            <p className="text-lg text-slate-400 leading-relaxed mb-12 font-medium">
+                            <p className="text-sm text-slate-400 leading-relaxed mb-2 font-medium">
                                 {item.description}
-                                <span className="block mt-6 text-xs text-slate-600 font-bold uppercase tracking-widest italic tracking-tighter">ID: {item.id}</span>
+                                <span className="block mt-1 text-[9px] text-slate-600 font-bold uppercase tracking-widest italic tracking-tighter">ID: {item.id}</span>
                             </p>
 
                             <div className="space-y-6">
@@ -395,30 +443,30 @@ const ItemDetailPage = () => {
                                         <p className="text-emerald-500/60 font-black uppercase text-[10px] tracking-widest">This item has found a new home</p>
                                     </div>
                                 ) : !isOwner ? (
-                                    <div className="glass border border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative overflow-hidden">
+                                    <div className="glass border border-white/10 p-4 rounded-3xl shadow-2xl relative overflow-hidden">
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-cherry opacity-5 blur-[100px]"></div>
 
-                                        <div className="mb-10">
-                                            <label className="block text-slate-500 text-[10px] font-black mb-6 uppercase tracking-[0.2em] text-center">Enter Your Bid Proposal</label>
+                                        <div className="mb-2">
+                                            <label className="block text-slate-500 text-[7px] font-black mb-1.5 uppercase tracking-[0.2em] text-center">Enter Your Bid Proposal</label>
                                             <div className="relative group">
                                                 <input
                                                     type="number"
                                                     value={bidAmount}
                                                     onChange={(e) => setBidAmount(e.target.value)}
-                                                    className="w-full h-24 glass border-2 border-white/5 rounded-[2rem] text-center font-display font-black text-5xl text-white focus:border-cherry/50 focus:ring-0 outline-none transition-all placeholder:opacity-10 group-hover:scale-[1.02]"
+                                                    className="w-full h-10 glass border-2 border-white/5 rounded-xl text-center font-display font-black text-xl text-white focus:border-cherry/50 focus:ring-0 outline-none transition-all placeholder:opacity-10 group-hover:scale-[1.01]"
                                                     placeholder="000"
                                                 />
-                                                <span className="absolute right-10 top-1/2 -translate-y-1/2 text-[10px] font-black text-white opacity-50 tracking-widest">MIN: {(item.price || 0) + 1}</span>
+                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[7px] font-black text-white opacity-50 tracking-widest uppercase">MIN: {(item.price || 0) + 1}</span>
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 gap-4">
+                                        <div className="grid grid-cols-1 gap-2">
                                             <button
                                                 onClick={handleBid}
                                                 disabled={bidding}
-                                                className="btn-primary text-white h-20 rounded-[2rem] font-black uppercase tracking-widest text-xs shadow-2xl shadow-cherry/20 hover:scale-105 transition-all disabled:opacity-50"
+                                                className="btn-primary text-white h-10 rounded-xl font-black uppercase tracking-widest text-[9px] shadow-2xl shadow-cherry/20 hover:scale-105 transition-all disabled:opacity-50"
                                             >
-                                                {bidding ? 'PROCESSING...' : 'PLACE YOUR BID'}
+                                                {bidding ? '...' : 'PLACE YOUR BID'}
                                             </button>
 
                                             <button
@@ -430,47 +478,47 @@ const ItemDetailPage = () => {
                                                     }
                                                     setShowSwapModal(true);
                                                 }}
-                                                className="glass text-white h-20 rounded-[2rem] font-black uppercase tracking-widest text-xs border-white/5 hover:bg-white/10 transition-all flex items-center justify-center gap-4"
+                                                className="glass text-white h-10 rounded-xl font-black uppercase tracking-widest text-[9px] border-white/5 hover:bg-white/10 transition-all flex items-center justify-center gap-4"
                                             >
-                                                <span className="text-[10px] font-black uppercase">BARTER</span> PROPOSE SWAP
+                                                <span className="text-[7px] font-black uppercase">BARTER</span> PROPOSE SWAP
                                             </button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="space-y-10 animate-fade-in">
-                                        <div className="p-8 glass border-white/10 rounded-[2.5rem] flex items-center justify-center gap-4">
-                                            <span className="font-black uppercase text-[10px] tracking-widest text-cosmos">OWNER VIEW: You are the curator of this piece</span>
+                                    <div className="space-y-6 animate-fade-in">
+                                        <div className="p-4 glass border-white/10 rounded-2xl flex items-center justify-center gap-4">
+                                            <span className="font-black uppercase text-[8px] tracking-widest text-cosmos">OWNER VIEW: You are the curator of this piece</span>
                                         </div>
 
                                         {bids.length > 0 ? (
-                                            <div className="glass border border-white/10 rounded-[3.5rem] overflow-hidden shadow-2xl">
-                                                <div className="bg-white/5 p-8 border-b border-white/5">
-                                                    <h3 className="font-black text-white text-[10px] uppercase tracking-[0.3em] flex items-center gap-3">
-                                                        <span className="w-2 h-2 bg-cherry rounded-full animate-pulse"></span>
+                                            <div className="glass border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl">
+                                                <div className="bg-white/5 p-4 border-b border-white/5">
+                                                    <h3 className="font-black text-white text-[8px] uppercase tracking-[0.3em] flex items-center gap-3">
+                                                        <span className="w-1.5 h-1.5 bg-cherry rounded-full animate-pulse"></span>
                                                         Market Interest ({bids.length})
                                                     </h3>
                                                 </div>
                                                 <div className="divide-y divide-white/5">
                                                     {bids.map((bid, index) => (
-                                                        <div key={bid.id} className="p-8 flex items-center justify-between group hover:bg-white/5 transition-all">
-                                                            <div className="flex items-center gap-5">
-                                                                <div className="w-12 h-12 glass rounded-2xl flex items-center justify-center font-black text-cosmos border-white/5 group-hover:scale-110 transition-transform">
+                                                        <div key={bid.id} className="p-4 flex items-center justify-between group hover:bg-white/5 transition-all">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="w-8 h-8 glass rounded-xl flex items-center justify-center font-black text-cosmos border-white/5 group-hover:scale-110 transition-transform text-xs">
                                                                     {bid.bidderName?.charAt(0) || 'U'}
                                                                 </div>
                                                                 <div>
-                                                                    <div className="flex items-center gap-3 mb-1">
-                                                                        <span className="font-black text-white text-sm uppercase tracking-tight">{bid.bidderName}</span>
-                                                                        {index === 0 && <span className="bg-emerald-500/10 text-emerald-400 text-[8px] px-2 py-0.5 rounded-full font-black uppercase">Prime</span>}
+                                                                    <div className="flex items-center gap-2 mb-0.5">
+                                                                        <span className="font-black text-white text-xs uppercase tracking-tight">{bid.bidderName}</span>
+                                                                        {index === 0 && <span className="bg-emerald-500/10 text-emerald-400 text-[6px] px-1.5 py-0.5 rounded-full font-black uppercase">Prime</span>}
                                                                     </div>
-                                                                    <p className="text-[9px] text-slate-500 font-black tracking-widest uppercase">{new Date(bid.createdAt).toLocaleDateString()}</p>
+                                                                    <p className="text-[7px] text-slate-500 font-black tracking-widest uppercase">{new Date(bid.createdAt).toLocaleDateString()}</p>
                                                                 </div>
                                                             </div>
-                                                            <div className="flex items-center gap-8">
-                                                                <span className="text-2xl font-black text-white">{bid.amount} <span className="text-[10px] text-cosmos">CR</span></span>
+                                                            <div className="flex items-center gap-4">
+                                                                <span className="text-lg font-black text-white">{bid.amount} <span className="text-[8px] text-cosmos">CR</span></span>
                                                                 <button
                                                                     onClick={() => handleAcceptBid(bid.id)}
                                                                     disabled={accepting}
-                                                                    className="bg-white text-black px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all disabled:opacity-50"
+                                                                    className="bg-white text-black px-4 py-2 rounded-lg font-black text-[8px] uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all disabled:opacity-50"
                                                                 >
                                                                     {accepting ? '...' : 'ACCEPT'}
                                                                 </button>

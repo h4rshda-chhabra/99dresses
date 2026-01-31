@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }) => {
         if (!storedUser || !storedUser.token) return;
 
         try {
-            const response = await fetch('http://localhost:5000/api/auth/profile', {
+            const response = await fetch('http://localhost:5000/api/profile', {
                 headers: {
                     'Authorization': `Bearer ${storedUser.token}`
                 }

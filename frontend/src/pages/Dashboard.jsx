@@ -1,16 +1,65 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { NotificationContext } from '../context/NotificationContext';
+import ChatInterface from '../components/ChatInterface';
 
 const Dashboard = () => {
     const { user } = useContext(AuthContext);
+    const { notifications } = useContext(NotificationContext);
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const [userItems, setUserItems] = useState([]);
     const [swapOffers, setSwapOffers] = useState([]);
     const [sentOffers, setSentOffers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('overview');
-
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
+    const [selectedSwapId, setSelectedSwapId] = useState(null);
     const [walletData, setWalletData] = useState({ credits: 0, history: [] });
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        const swapId = searchParams.get('swapId');
+        const validTabs = ['overview', 'my-items', 'swaps', 'wallet', 'messages'];
+        if (tab && validTabs.includes(tab)) {
+            setActiveTab(tab);
+        }
+        if (swapId) {
+            setSelectedSwapId(swapId);
+        }
+    }, [searchParams]);
+
+    useEffect(() => {
+        const withUser = searchParams.get('withUser');
+        if (withUser && activeTab === 'messages' && !loading) {
+            const combined = [...swapOffers, ...sentOffers];
+            const existing = combined.find(s => s.fromUserId === withUser || s.toUserId === withUser);
+
+            if (existing) {
+                setSelectedSwapId(existing.id);
+            } else {
+                // Create a new general inquiry
+                const startInquiry = async () => {
+                    try {
+                        const res = await fetch('http://localhost:5000/api/swaps/inquiry', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ fromUserId: user._id, toUserId: withUser })
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            setSelectedSwapId(data.id);
+                            // Important: Refresh to pull the new inquiry into the list
+                            fetchData();
+                        }
+                    } catch (err) {
+                        console.error("Inquiry error:", err);
+                    }
+                };
+                startInquiry();
+            }
+        }
+    }, [searchParams, swapOffers, sentOffers, activeTab, user?._id, loading]);
 
     const fetchData = async () => {
         try {
@@ -94,7 +143,28 @@ const Dashboard = () => {
             const data = await response.json();
             if (response.ok) {
                 alert(data.message);
-                fetchData();
+
+                if (status === 'ACCEPTED') {
+                    // Send automatic logistics message
+                    try {
+                        await fetch('http://localhost:5000/api/messages', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                swapOfferId: offerId,
+                                senderId: user._id,
+                                text: "Hey! Thank you for the trade. Can we discuss the logistics and pickup/shipping for this swap?"
+                            }),
+                        });
+                    } catch (msgErr) {
+                        console.error("Auto-message error:", msgErr);
+                    }
+
+                    // Route to the new chat interface
+                    navigate(`/dashboard?tab=messages&swapId=${offerId}`);
+                } else {
+                    fetchData();
+                }
             } else {
                 alert(`Error: ${data.message}`);
             }
@@ -170,7 +240,8 @@ const Dashboard = () => {
                 <nav className="space-y-3 flex-1 px-2 animate-fade-in" style={{ animationDelay: '0.1s' }}>
                     <NavItem id="overview" icon="STA" label="Overview" />
                     <NavItem id="my-items" icon="VLT" label="My Vault" count={userItems.length} />
-                    <NavItem id="swaps" icon="HUB" label="Swap Hub" count={swapOffers.length + sentOffers.length} />
+                    <NavItem id="swaps" icon="HUB" label="Swap Hub" count={swapOffers.filter(o => o.status === 'PENDING').length} />
+                    <NavItem id="messages" icon="MSG" label="Concierge Hub" count={notifications.filter(n => !n.isRead && n.type === 'CHAT_MESSAGE').length} />
                     <NavItem id="wallet" icon="WLT" label="Wallet" />
                 </nav>
 
@@ -318,13 +389,16 @@ const Dashboard = () => {
                                                 </div>
                                             </div>
                                             <div className="flex flex-wrap gap-3">
-                                                {offer.status === 'PENDING' ? (
-                                                    <>
-                                                        <Link to={`/chat/${offer.id}`} className="bg-white text-black px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 shadow-xl transition-all">Chat</Link>
+                                                {offer.status === 'PENDING' && (
+                                                    <div className="flex gap-4">
                                                         <button onClick={() => handleSwapResponse(offer.id, 'ACCEPTED')} className="btn-primary text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-cherry/20">Accept</button>
                                                         <button onClick={() => handleSwapResponse(offer.id, 'REJECTED')} className="glass text-slate-400 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:text-white transition-all">Decline</button>
-                                                    </>
-                                                ) : (
+                                                    </div>
+                                                )}
+                                                {offer.status === 'ACCEPTED' && (
+                                                    <span className="bg-emerald-500/10 text-emerald-400 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-emerald-500/10">BARTER ACTIVE</span>
+                                                )}
+                                                {offer.status === 'REJECTED' && (
                                                     <button onClick={() => handleDeleteSwap(offer.id)} className="glass text-red-500 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-red-500/10 transition-all">Remove History</button>
                                                 )}
                                             </div>
@@ -358,12 +432,9 @@ const Dashboard = () => {
                                                 </div>
                                             </div>
                                             <div className="flex gap-4 items-center">
-                                                {offer.status === 'PENDING' ? (
-                                                    <>
-                                                        <Link to={`/chat/${offer.id}`} className="glass text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-white/10 transition-all">Negotiate</Link>
-                                                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic tracking-[0.2em]">Pending Review</span>
-                                                    </>
-                                                ) : (
+                                                {offer.status === 'PENDING' && <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic tracking-[0.2em]">Pending Review</span>}
+                                                {offer.status === 'ACCEPTED' && <span className="bg-cosmos/10 text-cosmos px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-cosmos/10">CONVERSATION IN HUB</span>}
+                                                {offer.status === 'REJECTED' && (
                                                     <button onClick={() => handleDeleteSwap(offer.id)} className="glass text-red-500 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-red-500/10 transition-all">Delete Record</button>
                                                 )}
                                             </div>
@@ -371,6 +442,97 @@ const Dashboard = () => {
                                     ))}
                                 </div>
                             ) : <p className="text-slate-500 font-black uppercase tracking-widest text-xs p-20 glass rounded-[3rem] border-dashed border-white/5 text-center">Your sent offers list is clear.</p>}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'messages' && (
+                    <div className="h-[calc(100vh-200px)] flex flex-col lg:flex-row gap-8 animate-fade-in">
+                        {/* Conversation List */}
+                        <div className={`lg:w-1/3 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar ${selectedSwapId ? 'hidden lg:flex' : 'flex'}`}>
+                            <h2 className="font-display text-2xl font-black text-white mb-6 px-4 italic flex items-center gap-3">
+                                <span className="text-cosmos text-xl">💬</span> Messages
+                            </h2>
+                            <div className="flex flex-col gap-2">
+                                {[...swapOffers, ...sentOffers]
+                                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                                    .map((swap) => {
+                                        const isUnread = notifications.some(n => !n.isRead && n.type === 'CHAT_MESSAGE' && n.link === `/chat/${swap.id}`);
+                                        const otherParty = user._id === swap.fromUserId ? swap.toUserName : swap.fromUserName;
+                                        const isActive = selectedSwapId === swap.id;
+
+                                        return (
+                                            <div
+                                                key={swap.id}
+                                                onClick={() => setSelectedSwapId(swap.id)}
+                                                className={`p-5 rounded-[1.5rem] border transition-all cursor-pointer group relative flex items-center gap-4 ${isActive
+                                                    ? 'bg-cherry border-cherry shadow-xl shadow-cherry/20'
+                                                    : isUnread ? 'bg-white/10 border-white/20' : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10'
+                                                    }`}
+                                            >
+                                                {/* Avatar Circle */}
+                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-sm shrink-0 shadow-lg ${isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-cosmos border border-white/10'}`}>
+                                                    {otherParty?.charAt(0).toUpperCase()}
+                                                </div>
+
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-center mb-0.5">
+                                                        <h4 className={`font-black uppercase text-[11px] tracking-tight truncate ${isActive ? 'text-white' : 'text-white/90'}`}>
+                                                            {otherParty}
+                                                        </h4>
+                                                        <span className={`text-[7px] font-black uppercase tracking-widest ${isActive ? 'text-white/40' : 'text-slate-500'}`}>
+                                                            {new Date(swap.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="flex justify-between items-center gap-2">
+                                                        <p className={`text-[10px] font-medium truncate ${isActive ? 'text-white/70' : 'text-slate-400'}`}>
+                                                            {swap.lastMessage || `Started a ${swap.status.toLowerCase()}...`}
+                                                        </p>
+                                                        {isUnread && (
+                                                            <div className="w-2 h-2 bg-cosmos rounded-full shadow-[0_0_8px_#74a5be] shrink-0"></div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="mt-2 flex items-center gap-2">
+                                                        <span className={`text-[7px] font-black uppercase px-2 py-0.5 rounded-full border ${isActive
+                                                            ? 'bg-white/10 border-white/10 text-white/50'
+                                                            : swap.status === 'GENERAL' ? 'bg-blue-500/10 border-blue-500/10 text-blue-400' : 'bg-emerald-500/10 border-emerald-500/10 text-emerald-400'
+                                                            }`}>
+                                                            {swap.itemRequestedTitle === 'General Inquiry' ? 'Inquiry' : swap.itemRequestedTitle}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+
+                            {swapOffers.length === 0 && sentOffers.length === 0 && (
+                                <div className="text-center py-20 glass rounded-[2.5rem] border-dashed border-white/5">
+                                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic">No conversations yet</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Chat Context */}
+                        <div className={`flex-1 min-h-[500px] lg:h-full ${!selectedSwapId ? 'hidden lg:flex items-center justify-center' : 'flex'}`}>
+                            {selectedSwapId ? (
+                                <ChatInterface
+                                    swapId={selectedSwapId}
+                                    onBack={window.innerWidth < 1024 ? () => setSelectedSwapId(null) : null}
+                                />
+                            ) : (
+                                <div className="text-center p-20 glass border-white/5 rounded-[3.5rem] max-w-md w-full animate-fade-in">
+                                    <div className="w-20 h-20 bg-white/5 rounded-[2rem] flex items-center justify-center mx-auto mb-8 border border-white/10">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                        </svg>
+                                    </div>
+                                    <h3 className="font-display text-2xl font-black text-white mb-4 italic uppercase">Select a Conversation</h3>
+                                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-relaxed">Choose a trade from the left to start discussing logistics or negotiate terms.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

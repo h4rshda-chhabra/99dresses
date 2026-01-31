@@ -129,12 +129,28 @@ const SellerProfilePage = () => {
                                     <h1 className="font-display text-5xl font-black tracking-tighter uppercase mb-2">
                                         {profile.name}
                                     </h1>
-                                    {profile.basedIn && (
-                                        <div className="flex items-center gap-2 text-slate-400">
-                                            <span className="text-cosmos text-xs">📍</span>
-                                            <span className="font-bold text-sm">{profile.basedIn}</span>
-                                        </div>
-                                    )}
+                                    <div className="flex items-center gap-4">
+                                        {profile.basedIn && (
+                                            <div className="flex items-center gap-2 text-slate-400">
+                                                <span className="text-cosmos text-xs">📍</span>
+                                                <span className="font-bold text-sm">{profile.basedIn}</span>
+                                            </div>
+                                        )}
+                                        {(!user || user._id !== userId) && (
+                                            <button
+                                                onClick={() => {
+                                                    if (!user) {
+                                                        navigate('/login');
+                                                        return;
+                                                    }
+                                                    navigate(`/dashboard?tab=messages&withUser=${userId}`);
+                                                }}
+                                                className="btn-primary px-8 py-3.5 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-2xl shadow-cherry/40 flex items-center gap-4 hover:scale-105 transition-all group"
+                                            >
+                                                <span className="text-xl group-hover:animate-bounce">💬</span> {user ? 'Message Seller' : 'Login to Message'}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 

@@ -14,12 +14,14 @@ import Navbar from './components/Navbar';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import NotificationPopup from './components/NotificationPopup';
+import ScrollToTop from './components/ScrollToTop';
 
 function App() {
   return (
     <AuthProvider>
       <NotificationProvider>
         <Router>
+          <ScrollToTop />
           <div className="min-h-screen bg-slate-950 text-white font-body selection:bg-cherry/30">
             <Navbar />
             <NotificationPopup />

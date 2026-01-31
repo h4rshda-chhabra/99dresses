@@ -24,7 +24,7 @@ const LoginPage = () => {
 
             if (response.ok) {
                 login(data);
-                navigate('/dashboard');
+                navigate('/');
             } else {
                 setError(data.message || 'Login failed');
             }
